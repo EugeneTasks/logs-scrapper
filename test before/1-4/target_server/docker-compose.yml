@@ -9,6 +9,7 @@ services:
     image: fluent/fluent-bit:2.2.2
     container_name: fluent-bit
     restart: always
+    user: root
     environment:
       - HOSTNAME=${HOSTNAME}
       - FLUENTD_SERVER_NAME=${FLUENTD_SERVER_NAME}
@@ -18,9 +19,15 @@ services:
       - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - fluentbit-state:/fluent-bit/state
     ports:
       - "${DEBUG_PORT_FLUENTBIT}:2020"
     extra_hosts:
       - "${FLUENTD_SERVER_NAME}:${FLUENTD_SERVER_HOST}"
     command: ["fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
     logging: *default-logging
+    cap_add:
+      - SYS_ADMIN
+
+volumes:
+  fluentbit-state: {}
