@@ -22,4 +22,5 @@ services:
       - "${DEBUG_PORT_FLUENTBIT}:2020"
     extra_hosts:
       - "${FLUENTD_SERVER_NAME}:${FLUENTD_SERVER_HOST}"
+    command: ["fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
     logging: *default-logging
