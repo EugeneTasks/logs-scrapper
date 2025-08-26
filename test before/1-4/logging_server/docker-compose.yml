@@ -1,0 +1,63 @@
+volumes:
+  grafana_data: {}
+  loki_data: {}
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  fluentd:
+    build:
+      context: ./fluentd
+    container_name: ${SERVER_FLUENTD_NAME}
+    restart: always
+    environment:
+      - SERVER_LOKI_NAME=${SERVER_LOKI_NAME}
+      - PORT_LOKI=${PORT_LOKI}
+    volumes:
+      - ./fluentd/conf:/fluentd/etc:ro
+    ports:
+      - "${PORT_FLUENTD}:24224"
+      - "${PORT_FLUENTD_UDP}:24224/udp"
+    logging: *default-logging
+    networks:
+      - loki-net
+
+  loki:
+    image: grafana/loki:2.9.5
+    container_name: ${SERVER_LOKI_NAME}
+    restart: always
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/config:/etc/loki:ro
+      - loki_data:/loki
+    ports:
+      - "${PORT_LOKI}:3100"
+    logging: *default-logging
+    networks:
+      - loki-net
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: ${SERVER_GRAFANA_NAME}
+    restart: always
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${SERVER_GF_SECURITY_ADMIN_PASSWORD}
+      - SERVER_LOKI_NAME=${SERVER_LOKI_NAME}
+      - PORT_LOKI=${PORT_LOKI}
+    ports:
+      - "${PORT_GRAFANA}:3000"
+    logging: *default-logging
+    networks:
+      - loki-net
+
+networks:
+  loki-net:
+    driver: bridge
+    name: loki-net

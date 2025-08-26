@@ -1,0 +1,60 @@
+# <source> - Прием логов от Fluent Bit
+<source>
+  @type forward
+  @id input_forward
+  port 24224
+  bind 0.0.0.0
+</source>
+
+# <filter> - Проверка и добавление метки хоста
+# Этот фильтр применяется ко всем логам, проходящим через fluentd.
+<filter **>
+  @type record_transformer
+  enable_ruby true
+  <record>
+    # Ruby-выражение:
+    # record["host"] ||= "unknown_host"
+    # Это означает: "Если у записи (record) нет поля 'host' или оно пустое,
+    # присвоить ему значение 'unknown_host'".
+    # Если поле 'host' уже было добавлено на стороне fluent-bit, оно не изменится.
+    host ${record["host"] || "unknown_host_from_fluentd"}
+  </record>
+</filter>
+
+# <match> - Отправка логов в Loki
+# Этот блок срабатывает для всех логов (Match *)
+<match **>
+  @type loki
+  @id output_loki
+  
+  # URL нашего сервиса Loki в Docker-сети
+  endpoint_url "http://#{ENV['SERVER_LOKI_NAME']}:#{ENV['PORT_LOKI']}/loki/api/v1/push"
+  
+  # Преобразуем поля из лога в метки (labels) в Loki.
+  # Метки - это ключ к быстрой фильтрации в Loki.
+  # Не добавляйте сюда поля с высокой кардинальностью (например, message).
+  <label>
+    host ${record["host"]}
+    container_name ${record["container_name"]}
+    stream ${record["stream"]}
+  </label>
+  
+  # Буферизация для надежности. Логи будут временно храниться на диске,
+  # если Loki недоступен, и отправятся позже.
+  <buffer>
+    @type file
+    path /fluentd/log/buffer/loki
+    flush_interval 10s
+    chunk_limit_size 2M
+    queue_limit_length 8
+    retry_max_interval 30
+    retry_forever true
+  </buffer>
+</match>
+
+<label @FLUENT_LOG>
+  <match fluent.*>
+    @type stdout
+    @id output_fluent_log
+  </match>
+</label>

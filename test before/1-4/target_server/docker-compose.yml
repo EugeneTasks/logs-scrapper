@@ -1,0 +1,25 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  fluent-bit:
+    image: fluent/fluent-bit:2.2.2
+    container_name: fluent-bit
+    restart: always
+    environment:
+      - HOSTNAME=${HOSTNAME}
+      - FLUENTD_SERVER_NAME=${FLUENTD_SERVER_NAME}
+      - PORT_FLUENTD=${PORT_FLUENTD}
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "${DEBUG_PORT_FLUENTBIT}:2020"
+    extra_hosts:
+      - "${FLUENTD_SERVER_NAME}:${FLUENTD_SERVER_HOST}"
+    logging: *default-logging
