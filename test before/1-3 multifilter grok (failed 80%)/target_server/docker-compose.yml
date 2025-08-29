@@ -1,0 +1,44 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  fluent-bit:
+    image: fluent/fluent-bit:3.0.0
+    container_name: fluent-bit
+    restart: always
+    user: root
+    environment:
+      - HOSTNAME=${HOSTNAME}
+      - LOKI_SERVER_NAME=${LOKI_SERVER_NAME}
+      - LOKI_PORT=${LOKI_PORT}
+    volumes:
+      - ./fluent-bit/fluent-bit.1conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      # - ./fluent-bit/custom_grok_patterns.conf:/fluent-bit/etc/custom_grok_patterns.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - fluentbit-state:/fluent-bit/state
+      - ./fluent-bit/docker-metadata.lua:/fluent-bit/etc/docker-metadata.lua:ro
+      - ./fluent-bit/docker-droper.lua:/fluent-bit/etc/docker-droper.lua:ro
+    ports:
+      - "${DEBUG_PORT_FLUENTBIT}:2020"
+    extra_hosts:
+      - "${LOKI_SERVER_NAME}:${LOKI_SERVER_HOST}"
+    command: ["fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
+    logging: *default-logging
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: node-exporter
+    restart: always
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - '--path.rootfs=/host'
+
+volumes:
+  fluentbit-state: {}
