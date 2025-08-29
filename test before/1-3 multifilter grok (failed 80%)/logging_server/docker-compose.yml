@@ -1,6 +1,3 @@
-volumes:
-  grafana_data: {}
-  loki_data: {}
 
 x-logging: &default-logging
   driver: "json-file"
@@ -9,32 +6,20 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  fluentd:
-    # build:
-    #   context: ./fluentd
-    image: grafana/fluent-plugin-loki:latest
-    container_name: ${SERVER_FLUENTD_NAME}
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: ${SERVER_PROMETHEUS_NAME}
     restart: always
-    command:
-      - "fluentd"
-      - "-v"
-      - "-p"
-      - "/fluentd/plugins"
-    environment:
-      # - SERVER_LOKI_NAME=${SERVER_LOKI_NAME}
-      # - PORT_LOKI=${PORT_LOKI}
-      - LOKI_URL=http://loki:3100/loki/api/v1/push
-      - FLUENTD_CONF=fluent.conf
     volumes:
-      - ./fluentd/conf/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - ./prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
     ports:
-      - "${PORT_FLUENTD}:24224"
-      - "${PORT_FLUENTD_UDP}:24224/udp"
-      - "9880:9880"
-    logging: *default-logging
+      - "${PORT_PROMETHEUS}:9090"
     networks:
       - loki-net
-
+      
   loki:
     image: grafana/loki:2.9.5
     container_name: ${SERVER_LOKI_NAME}
@@ -42,7 +27,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./loki/config:/etc/loki:ro
-      - loki_data:/loki
+      - ./loki/data:/loki
     ports:
       - "${PORT_LOKI}:3100"
     logging: *default-logging
@@ -54,7 +39,7 @@ services:
     container_name: ${SERVER_GRAFANA_NAME}
     restart: always
     volumes:
-      - grafana_data:/var/lib/grafana
+      - ./grafana/data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${SERVER_GF_SECURITY_ADMIN_PASSWORD}

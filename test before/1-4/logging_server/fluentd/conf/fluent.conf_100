@@ -8,11 +8,11 @@
 <filter source.docker.**>
   @type record_transformer
   <record>
-    # service ${record["container_name"]}  
+    service ${record["container_name"]}  
     label_container_name ${record["container_name"]}
     label_container_image ${record["container_image"]}
     label_host ${record["host"]}
-    label_service ${record["container_name"]}
+    label_service ${record["service"]}
   </record>
 </filter>
 
@@ -21,19 +21,20 @@
   <store>
     @type loki
     @id output_loki_docker
-    url "http://loki:3100"  
-    # flush_interval 3s
+    url "http://loki:3100" 
+    flush_interval 3s
     line_format json
-    # label_keys label_container_name,label_container_image,label_host,label_service  
+    remove_keys time,stream,container_id,label_container_name,label_container_image,label_host,label_service 
+    label_keys label_container_name,label_container_image,label_host,label_service  
     <label>
-    #   job docker-logs 
-    #   source docker    
-      container_name label_container_name  
+      job docker-logs 
+      source docker
+      keys label_keys
+      container_name label_container_name
       container_image label_container_image
       host label_host
-      service label_service  
+      service label_service
     </label>
-    remove_keys time,stream,container_id,label_container_name,label_container_image,label_host,label_service  
     <buffer>
       flush_interval 3s
       retry_type exponential_backoff
@@ -46,15 +47,17 @@
     @type stdout
     @id output_stdout_debug
     <format>
-      @type json  
+      @type json  # Для отладки
     </format>
   </store>
 </match>
 
+# Обработка остальных логов
 <match **>
   @type stdout
 </match>
 
+# Фикс для логов Fluentd
 <label @FLUENT_LOG>
   <match fluent.**>
     @type stdout

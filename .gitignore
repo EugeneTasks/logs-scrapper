@@ -1,0 +1,4 @@
+/test \before/*/logging_server/.env
+/test \before/*/target_server/.env
+/test \before/*/target_server/*/data/*
+/test \before/*/logging_server/*/data/*

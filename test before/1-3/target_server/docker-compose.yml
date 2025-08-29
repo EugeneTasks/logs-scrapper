@@ -12,8 +12,8 @@ services:
     user: root
     environment:
       - HOSTNAME=${HOSTNAME}
-      - FLUENTD_SERVER_NAME=${FLUENTD_SERVER_NAME}
-      - PORT_FLUENTD=${PORT_FLUENTD}
+      - LOKI_SERVER_NAME=${LOKI_SERVER_NAME}
+      - LOKI_PORT=${LOKI_PORT}
     volumes:
       - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
@@ -24,9 +24,19 @@ services:
     ports:
       - "${DEBUG_PORT_FLUENTBIT}:2020"
     extra_hosts:
-      - "${FLUENTD_SERVER_NAME}:${FLUENTD_SERVER_HOST}"
+      - "${LOKI_SERVER_NAME}:${LOKI_SERVER_HOST}"
     command: ["fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
     logging: *default-logging
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: node-exporter
+    restart: always
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - '--path.rootfs=/host'
 
 volumes:
   fluentbit-state: {}
